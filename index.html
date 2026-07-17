@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fruit Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ==========================================================================
+   Base / reset — shared by both conditions
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: #FAFAF8;
+  color: #2B2B2B;
+  min-height: 100vh;
+  transition: background 0.4s ease;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+.screen {
+  display: none;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 24px 16px;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ---- Username screen ---- */
+
+.username-card, .end-card {
+  background: #fff;
+  border: 1px solid #E4E2DC;
+  border-radius: 16px;
+  padding: 36px 32px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.username-card h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.username-card p {
+  margin: 0 0 20px;
+  color: #6B6B63;
+  font-size: 14px;
+}
+
+#username-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid #D8D6CE;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+#username-input:focus-visible {
+  border-color: #4F8A76;
+  box-shadow: 0 0 0 3px rgba(79,138,118,0.15);
+}
+
+#start-btn {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #4F8A76;
+  color: #fff;
+  border-radius: 10px;
+  transition: opacity 0.2s ease;
+}
+
+#start-btn:disabled { opacity: 0.6; cursor: default; }
+#start-btn:hover:not(:disabled) { opacity: 0.9; }
+#start-btn:focus-visible { outline: 3px solid rgba(79,138,118,0.4); outline-offset: 2px; }
+
+.error-text {
+  color: #C0392B;
+  font-size: 13px;
+  min-height: 18px;
+  margin: 10px 0 0;
+}
+
+/* ---- End screen ---- */
+
+.end-card h2 { margin: 0 0 8px; font-size: 22px; }
+.end-card p { margin: 0; color: #6B6B63; font-size: 14px; }
+
+.spinner {
+  margin: 20px auto 0;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #E4E2DC;
+  border-top-color: #4F8A76;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Board (shared skeleton, sizing shared, look differs) ---- */
+
+.board {
+  display: grid;
+  gap: 4px;
+  width: min(92vw, 420px);
+  aspect-ratio: 1 / 1;
+  margin: 16px auto 0;
+}
+
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(16px, 4.2vw, 24px);
+  border-radius: 8px;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.tile:hover { transform: scale(1.05); }
+.tile:active { transform: scale(0.95); }
+
+/* ==========================================================================
+   UI-A — Minimal condition
+   Quiet, precise, generous whitespace, a single accent color.
+   ========================================================================== */
+
+body.ui-minimal { background: #FAFAF8; }
+
+.hud-minimal {
+  display: flex;
+  gap: 24px;
+  font-size: 15px;
+  color: #4A4A44;
+  width: min(92vw, 420px);
+  margin: 0 auto;
+}
+
+.board-minimal .tile {
+  background: #fff;
+  border: 1px solid #E4E2DC;
+}
+
+.board-minimal .tile.selected {
+  border-color: #4F8A76;
+  box-shadow: 0 0 0 2px rgba(79,138,118,0.25);
+}
+
+/* ==========================================================================
+   UI-B — Complex condition
+   Saturated, layered, busier — deliberately higher information density.
+   ========================================================================== */
+
+body.ui-complex {
+  background: linear-gradient(135deg, #FF6B6B 0%, #FFB84D 45%, #6BCBFF 100%);
+  font-family: "Baloo 2", "Inter", system-ui, sans-serif;
+}
+
+.top-bar {
+  width: min(92vw, 420px);
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.logo-accent { color: #FFF3B0; }
+
+.settings-icon {
+  background: rgba(255,255,255,0.25);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ad-banner {
+  width: min(92vw, 420px);
+  margin: 0 auto 10px;
+  background: repeating-linear-gradient(45deg, #FFE066, #FFE066 10px, #FFD23F 10px, #FFD23F 20px);
+  color: #5C3D00;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.hud-complex {
+  display: flex;
+  gap: 8px;
+  width: min(92vw, 420px);
+  margin: 0 auto;
+}
+
+.stat-card {
+  flex: 1;
+  background: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding: 8px 4px;
+  text-align: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+.stat-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8A8A8A;
+  font-family: "Inter", sans-serif;
+}
+
+.stat-value {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  color: #FF6B6B;
+}
+
+.progress-bar-wrap {
+  width: min(92vw, 420px);
+  margin: 8px auto 0;
+  background: rgba(255,255,255,0.5);
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6BCBFF, #4F8AFF);
+  transition: width 0.3s ease;
+}
+
+.board-complex .tile {
+  background: #fff;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+  border: 2px solid transparent;
+}
+
+.board-complex .tile.selected {
+  border-color: #FF6B6B;
+  box-shadow: 0 0 0 3px rgba(255,107,107,0.35);
+}
+
+.combo-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: #2B2B2B;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.combo-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.settings-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-modal.open { display: flex; }
+
+.settings-modal-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  width: min(85vw, 300px);
+  font-family: "Inter", sans-serif;
+}
+
+.settings-modal-card h3 { margin: 0 0 14px; }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.settings-modal-card #close-settings-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  background: #FF6B6B;
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Accessibility
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+</style>
+</head>
+<body>
+
+  <!-- Username Screen -->
+  <section id="username-screen" class="screen active">
+    <div class="username-card">
+      <h1>Fruit Match</h1>
+      <p>Enter a username to begin the session.</p>
+      <input type="text" id="username-input" placeholder="Your username" autocomplete="off" maxlength="40" />
+      <button id="start-btn">Start</button>
+      <p id="username-error" class="error-text"></p>
+    </div>
+  </section>
+
+  <!-- Game Screen (contents injected per UI condition) -->
+  <section id="game-screen" class="screen"></section>
+
+  <!-- End Screen -->
+  <section id="end-screen" class="screen">
+    <div class="end-card">
+      <h2 id="end-title">Session complete</h2>
+      <p id="end-message">Saving your results…</p>
+      <div class="spinner" id="end-spinner"></div>
+    </div>
+  </section>
+
+<script>
+/*
+  game-core.js
+  ------------
+  Pure game logic for the match-3 session. This file is identical for both
+  UI conditions (minimal and complex) — it never touches the DOM. All
+  rendering happens in app.js via the hooks passed to Game.init(). Keeping
+  the mechanics in one shared module guarantees that UI-A and UI-B only
+  differ in presentation, never in gameplay.
+*/
+
+const Game = (function () {
+  const ROWS = 8;
+  const COLS = 8;
+  const TILE_TYPES = 6;
+  const TOTAL_MOVES = 20; // fixed per session so score/time are comparable across participants
+  const TILE_EMOJI = ["🍎", "🍋", "🍇", "🍊", "🍓", "🫐"];
+
+  let state = null;
+  let hooks = { onUpdate: () => {}, onCascade: () => {}, onGameEnd: () => {} };
+
+  function findMatches(grid, rows, cols) {
+    const matched = new Set();
+
+    // Horizontal runs
+    for (let r = 0; r < rows; r++) {
+      let runStart = 0;
+      for (let c = 1; c <= cols; c++) {
+        const prevVal = grid[r * cols + (c - 1)];
+        const curVal = c < cols ? grid[r * cols + c] : null;
+        if (curVal !== prevVal || c === cols) {
+          if (c - runStart >= 3) {
+            for (let k = runStart; k < c; k++) matched.add(r * cols + k);
+          }
+          runStart = c;
+        }
+      }
+    }
+
+    // Vertical runs
+    for (let c = 0; c < cols; c++) {
+      let runStart = 0;
+      for (let r = 1; r <= rows; r++) {
+        const prevVal = grid[(r - 1) * cols + c];
+        const curVal = r < rows ? grid[r * cols + c] : null;
+        if (curVal !== prevVal || r === rows) {
+          if (r - runStart >= 3) {
+            for (let k = runStart; k < r; k++) matched.add(k * cols + c);
+          }
+          runStart = r;
+        }
+      }
+    }
+
+    return matched;
+  }
+
+  function applyGravityAndRefill(grid, rows, cols, tileTypes) {
+    for (let c = 0; c < cols; c++) {
+      let writeRow = rows - 1;
+      for (let r = rows - 1; r >= 0; r--) {
+        const idx = r * cols + c;
+        if (grid[idx] !== null) {
+          grid[writeRow * cols + c] = grid[idx];
+          if (writeRow !== r) grid[idx] = null;
+          writeRow--;
+        }
+      }
+      for (let r = writeRow; r >= 0; r--) {
+        grid[r * cols + c] = Math.floor(Math.random() * tileTypes);
+      }
+    }
+  }
+
+  function isAdjacent(a, b) {
+    const ra = Math.floor(a / COLS), ca = a % COLS;
+    const rb = Math.floor(b / COLS), cb = b % COLS;
+    return Math.abs(ra - rb) + Math.abs(ca - cb) === 1;
+  }
+
+  function hasPossibleMove(grid, rows, cols) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        if (c < cols - 1) {
+          const test = grid.slice();
+          [test[idx], test[idx + 1]] = [test[idx + 1], test[idx]];
+          if (findMatches(test, rows, cols).size > 0) return true;
+        }
+        if (r < rows - 1) {
+          const idx2 = idx + cols;
+          const test = grid.slice();
+          [test[idx], test[idx2]] = [test[idx2], test[idx]];
+          if (findMatches(test, rows, cols).size > 0) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function createBoard(rows, cols, tileTypes) {
+    let grid;
+    do {
+      grid = new Array(rows * cols).fill(null);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          let value;
+          do {
+            value = Math.floor(Math.random() * tileTypes);
+          } while (
+            (c >= 2 && grid[r * cols + c - 1] === value && grid[r * cols + c - 2] === value) ||
+            (r >= 2 && grid[(r - 1) * cols + c] === value && grid[(r - 2) * cols + c] === value)
+          );
+          grid[r * cols + c] = value;
+        }
+      }
+    } while (!hasPossibleMove(grid, rows, cols));
+    return grid;
+  }
+
+  function resolveMatches(initialMatched) {
+    let matched = initialMatched;
+    let comboCount = 0;
+    while (matched.size > 0) {
+      comboCount++;
+      const points = matched.size * 10 * comboCount; // chain reactions score progressively more
+      state.score += points;
+      matched.forEach((idx) => { state.grid[idx] = null; });
+      applyGravityAndRefill(state.grid, ROWS, COLS, TILE_TYPES);
+      matched = findMatches(state.grid, ROWS, COLS);
+      hooks.onCascade({ comboCount, points, totalScore: state.score });
+    }
+    if (!hasPossibleMove(state.grid, ROWS, COLS)) {
+      state.grid = createBoard(ROWS, COLS, TILE_TYPES);
+    }
+  }
+
+  function init(customHooks) {
+    hooks = Object.assign({ onUpdate: () => {}, onCascade: () => {}, onGameEnd: () => {} }, customHooks || {});
+    state = {
+      grid: createBoard(ROWS, COLS, TILE_TYPES),
+      score: 0,
+      movesLeft: TOTAL_MOVES,
+      totalMoves: TOTAL_MOVES,
+      errorCount: 0,
+      selected: null,
+      startTime: Date.now(),
+      timePlayed: null,
+      ended: false,
+    };
+    hooks.onUpdate(state);
+    return state;
+  }
+
+  function attemptSwap(a, b) {
+    if (!state || state.ended) return;
+    if (!isAdjacent(a, b)) return;
+
+    [state.grid[a], state.grid[b]] = [state.grid[b], state.grid[a]];
+    const matched = findMatches(state.grid, ROWS, COLS);
+
+    if (matched.size === 0) {
+      // Invalid move: revert the swap and count it as an error.
+      [state.grid[a], state.grid[b]] = [state.grid[b], state.grid[a]];
+      state.errorCount++;
+      hooks.onUpdate(state);
+      return;
+    }
+
+    state.movesLeft--;
+    resolveMatches(matched);
+    hooks.onUpdate(state);
+
+    if (state.movesLeft <= 0) {
+      endGame();
+    }
+  }
+
+  function endGame() {
+    if (!state || state.ended) return;
+    state.ended = true;
+    state.timePlayed = Math.round((Date.now() - state.startTime) / 100) / 10; // seconds, 1 decimal
+    hooks.onGameEnd(state);
+  }
+
+  return {
+    init,
+    attemptSwap,
+    isAdjacent,
+    getState: () => state,
+    getDimensions: () => ({ rows: ROWS, cols: COLS }),
+    getEmoji: (value) => TILE_EMOJI[value],
+  };
+})();
+
+</script>
+<script>
+/*
+  app.js
+  ------
+  Handles everything game-core.js doesn't: the username screen, assigning
+  the participant to a UI condition, rendering the two UI variants, and
+  sending session data to Google Sheets before redirecting to the exit
+  survey.
+*/
+
+// ---- Configuration -------------------------------------------------------
+
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzmElShQEjYlW6zC53SqCrbvzyfGUVqRc-U40jcwDUOA92RCzoH_cMDH_Iz7Vd-iu7-Yg/exec";
+const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc2-jL51ym2ULbT3LTmIY8GJyIP6DEtHGvJ8CyG5SSPCsSsKg/viewform?usp=header";
+
+// ---- Screen helpers --------------------------------------------------
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ---- UI condition assignment -----------------------------------------
+
+// Asks the Apps Script endpoint for a balanced UI assignment. The server
+// keeps the running minimal/complex counters (in PropertiesService, guarded
+// by a lock) and returns the condition this participant should get, so the
+// balancing logic lives in one place instead of being duplicated here.
+// Falls back to a random 50/50 pick if the request fails, so a network
+// hiccup never blocks the session from starting.
+async function assignUIType(username) {
+  try {
+    const res = await fetch(WEBAPP_URL, { method: "GET" });
+    if (!res.ok) throw new Error(`Assignment request failed: ${res.status}`);
+    const data = await res.json();
+    if (data.uiType === "minimal" || data.uiType === "complex") {
+      return data.uiType;
+    }
+    throw new Error(`Unexpected assignment response: ${JSON.stringify(data)}`);
+  } catch (err) {
+    console.error("assignUIType: falling back to random assignment:", err);
+    return Math.random() < 0.5 ? "minimal" : "complex";
+  }
+}
+
+// ---- Data submission ----------------------------------------------------
+
+function buildPayload(username, uiType, state) {
+  return {
+    playerID: username,
+    score: state.score,
+    timePlayed: state.timePlayed,
+    uiType: uiType,
+    errorCount: state.errorCount,
+  };
+}
+
+function sendSessionData(payload) {
+  // text/plain avoids a CORS preflight request, which Apps Script web apps
+  // do not handle; the Apps Script side still JSON.parses the body fine.
+  return fetch(WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  });
+}
+
+// ---- UI templates ---------------------------------------------------
+
+function renderMinimalUI() {
+  document.getElementById("game-screen").innerHTML = `
+    <div class="hud hud-minimal">
+      <span class="hud-item">Score: <strong id="score-value">0</strong></span>
+      <span class="hud-item">Moves: <strong id="moves-value">20</strong></span>
+    </div>
+    <div id="board" class="board board-minimal"></div>
+  `;
+}
+
+function renderComplexUI() {
+  document.getElementById("game-screen").innerHTML = `
+    <div class="top-bar">
+      <div class="logo">🍉 Fruit Match <span class="logo-accent">Deluxe</span></div>
+      <button class="settings-icon" id="settings-btn" aria-label="Settings">⚙️</button>
+    </div>
+    <div class="ad-banner">✨ Sponsored: Unlock Fruit Match Deluxe Premium — Go Ad-Free! ✨</div>
+    <div class="hud hud-complex">
+      <div class="stat-card">
+        <span class="stat-label">Score</span>
+        <span id="score-value" class="stat-value">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Moves</span>
+        <span id="moves-value" class="stat-value">20</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Mistakes</span>
+        <span id="error-value" class="stat-value">0</span>
+      </div>
+    </div>
+    <div class="progress-bar-wrap"><div id="progress-bar" class="progress-bar"></div></div>
+    <div id="board" class="board board-complex"></div>
+    <div id="combo-toast" class="combo-toast"></div>
+
+    <div id="settings-modal" class="settings-modal">
+      <div class="settings-modal-card">
+        <h3>Settings</h3>
+        <label class="toggle-row"><span>Sound Effects</span><input type="checkbox" checked /></label>
+        <label class="toggle-row"><span>Background Music</span><input type="checkbox" /></label>
+        <label class="toggle-row"><span>Vibration</span><input type="checkbox" checked /></label>
+        <button id="close-settings-btn">Close</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("settings-btn").addEventListener("click", () => {
+    document.getElementById("settings-modal").classList.add("open");
+  });
+  document.getElementById("close-settings-btn").addEventListener("click", () => {
+    document.getElementById("settings-modal").classList.remove("open");
+  });
+}
+
+// ---- Board rendering (shared markup, used by both conditions) -----------
+
+function renderBoard(state, dims) {
+  const board = document.getElementById("board");
+  if (!board) return;
+  board.style.gridTemplateColumns = `repeat(${dims.cols}, 1fr)`;
+  board.innerHTML = "";
+  state.grid.forEach((value, idx) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    if (state.selected === idx) tile.classList.add("selected");
+    tile.dataset.index = idx;
+    tile.textContent = Game.getEmoji(value);
+    tile.addEventListener("click", () => handleTileClick(idx));
+    attachSwipeHandlers(tile, idx, dims);
+    board.appendChild(tile);
+  });
+}
+
+// ---- Swipe gesture handling ------------------------------------------
+
+// Minimum finger movement (px) before a touch counts as a swipe rather
+// than a tap. Below this threshold the tap-to-select flow still applies.
+const SWIPE_THRESHOLD = 24;
+
+function attachSwipeHandlers(tile, idx, dims) {
+  let startX = 0;
+  let startY = 0;
+  let tracking = false;
+
+  tile.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
+    tracking = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  tile.addEventListener("touchend", (e) => {
+    if (!tracking) return;
+    tracking = false;
+
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) {
+      // Too small to be a swipe; let the click event handle it as a tap.
+      return;
+    }
+
+    // Prevent the synthetic click that follows touchend from also firing
+    // handleTileClick, which would re-select the tile after we've already
+    // acted on the swipe.
+    e.preventDefault();
+
+    const direction = Math.abs(dx) > Math.abs(dy)
+      ? (dx > 0 ? "right" : "left")
+      : (dy > 0 ? "down" : "up");
+
+    const targetIdx = swipeTargetIndex(idx, direction, dims);
+    if (targetIdx === null) return; // swiped off the edge of the board
+
+    const state = Game.getState();
+    if (!state || state.ended) return;
+    state.selected = null;
+    Game.attemptSwap(idx, targetIdx);
+  });
+}
+
+function swipeTargetIndex(idx, direction, dims) {
+  const row = Math.floor(idx / dims.cols);
+  const col = idx % dims.cols;
+
+  switch (direction) {
+    case "left":
+      return col > 0 ? idx - 1 : null;
+    case "right":
+      return col < dims.cols - 1 ? idx + 1 : null;
+    case "up":
+      return row > 0 ? idx - dims.cols : null;
+    case "down":
+      return row < dims.rows - 1 ? idx + dims.cols : null;
+    default:
+      return null;
+  }
+}
+
+function handleTileClick(idx) {
+  const state = Game.getState();
+  if (!state || state.ended) return;
+
+  if (state.selected === null) {
+    state.selected = idx;
+    renderBoard(state, Game.getDimensions());
+    return;
+  }
+  if (state.selected === idx) {
+    state.selected = null;
+    renderBoard(state, Game.getDimensions());
+    return;
+  }
+  if (!Game.isAdjacent(state.selected, idx)) {
+    // Not adjacent: treat as picking a new tile, not a failed swap attempt.
+    state.selected = idx;
+    renderBoard(state, Game.getDimensions());
+    return;
+  }
+
+  const prevSelected = state.selected;
+  state.selected = null;
+  Game.attemptSwap(prevSelected, idx);
+}
+
+// ---- Update hooks passed into Game.init() -------------------------------
+
+function onUpdate(state) {
+  renderBoard(state, Game.getDimensions());
+
+  const scoreEl = document.getElementById("score-value");
+  const movesEl = document.getElementById("moves-value");
+  const errorEl = document.getElementById("error-value");
+  const progressEl = document.getElementById("progress-bar");
+
+  if (scoreEl) scoreEl.textContent = state.score;
+  if (movesEl) movesEl.textContent = state.movesLeft;
+  if (errorEl) errorEl.textContent = state.errorCount;
+  if (progressEl) {
+    const pct = ((state.totalMoves - state.movesLeft) / state.totalMoves) * 100;
+    progressEl.style.width = `${pct}%`;
+  }
+}
+
+function onCascade({ comboCount, points }) {
+  const toast = document.getElementById("combo-toast");
+  if (!toast) return; // minimal UI has no toast element, and that's fine
+  toast.textContent = comboCount > 1 ? `Combo x${comboCount}! +${points}` : `+${points}`;
+  toast.classList.remove("show");
+  // Force reflow so the animation restarts on rapid consecutive combos.
+  void toast.offsetWidth;
+  toast.classList.add("show");
+}
+
+function onGameEnd(state, username, uiType) {
+  showScreen("end-screen");
+  document.getElementById("end-title").textContent = `Nice work, ${username}!`;
+  document.getElementById("end-message").textContent = "Saving your results…";
+
+  const payload = buildPayload(username, uiType, state);
+
+  sendSessionData(payload)
+    .catch((err) => console.error("Failed to log session data:", err))
+    .finally(() => {
+      window.location.href = FORM_URL;
+    });
+}
+
+// ---- Game start -----------------------------------------------------
+
+function startGame(username, uiType) {
+  showScreen("game-screen");
+  document.body.className = uiType === "complex" ? "ui-complex" : "ui-minimal";
+
+  if (uiType === "complex") {
+    renderComplexUI();
+  } else {
+    renderMinimalUI();
+  }
+
+  Game.init({
+    onUpdate,
+    onCascade,
+    onGameEnd: (state) => onGameEnd(state, username, uiType),
+  });
+}
+
+// ---- Username screen wiring ----------------------------------------
+
+async function handleStart() {
+  const input = document.getElementById("username-input");
+  const errorEl = document.getElementById("username-error");
+  const startBtn = document.getElementById("start-btn");
+  const username = input.value.trim();
+
+  if (!username) {
+    errorEl.textContent = "Please enter a username.";
+    return;
+  }
+
+  errorEl.textContent = "";
+  startBtn.disabled = true;
+  startBtn.textContent = "Loading…";
+
+  const uiType = await assignUIType(username);
+  startGame(username, uiType);
+}
+
+document.getElementById("start-btn").addEventListener("click", handleStart);
+document.getElementById("username-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleStart();
+});
+
+</script>
+</body>
+</html>
