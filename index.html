@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Endless Runner UI Experiment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  /* =========================================================
+     BASE STYLES
+     ========================================================= */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #111;
+    color: #111;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+  }
+
+  /* Screens */
+  .screen { display: none; height: 100vh; width: 100vw; justify-content: center; align-items: center; flex-direction: column; position: absolute; top:0; left:0;}
+  .screen.active { display: flex; }
+
+  /* Menus */
+  .card { background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 90%; z-index: 100;}
+  .card h1 { margin-bottom: 0.5rem; font-size: 1.5rem; }
+  .card p { margin-bottom: 1.5rem; color: #555; }
+  select, input { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 1rem; font-size: 1rem; }
+  button { background: #007aff; color: #fff; border: none; padding: 0.75rem 1.5rem; font-size: 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; }
+  button:disabled { background: #ccc; cursor: not-allowed; }
+  
+  #game-screen { position: relative; background: #ddd; }
+
+  /* =========================================================
+     MINIMAL UI
+     ========================================================= */
+  body.ui-minimal #game-screen { background: #e0e0e0; }
+  .hud-minimal { position: absolute; top: 1rem; left: 1rem; right: 1rem; display: flex; justify-content: space-between; font-size: 1.5rem; font-weight: 800; z-index: 10; color: #333; text-shadow: 1px 1px 0px #fff;}
+  .minimal-pause-btn { background: rgba(0,0,0,0.2); border-radius: 8px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; color: #333; border: none; padding: 0; font-weight: 900; }
+
+  /* =========================================================
+     COMPLEX UI 
+     ========================================================= */
+  body.ui-complex #game-screen {
+    background: linear-gradient(135deg, #2b00ff, #ff00c8, #00d4ff);
+    background-size: 400% 400%;
+    animation: bgGradient 8s ease infinite;
+  }
+  @keyframes bgGradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+  
+  /* Top Bar */
+  .top-bar-complex { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0,0,0,0.85); padding: 0.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #ffcc00; z-index: 30; color: #fff;}
+  .complex-profile { display: flex; align-items: center; gap: 0.5rem; }
+  .profile-icon { width: 35px; height: 35px; background: url('https://api.dicebear.com/7.x/avataaars/svg?seed=Runner') center/cover; border-radius: 50%; border: 2px solid #00ffcc; }
+  .complex-stats { display: flex; gap: 10px; font-size: 0.9rem; font-weight: 700; align-items: center; }
+  .badge { background: #333; padding: 4px 8px; border-radius: 6px; border: 1px solid #555; }
+  .badge.gold { color: #ffcc00; border-color: #ffcc00; }
+  
+  /* Left Panel (Missions) */
+  .complex-missions { position: absolute; top: 70px; left: 10px; width: 140px; background: rgba(0,0,0,0.7); border: 2px solid #00ffcc; border-radius: 8px; padding: 10px; color: white; z-index: 25; font-size: 0.75rem; box-shadow: 0 0 10px #00ffcc55; }
+  .mission-item { margin-bottom: 8px; }
+  .mission-title { color: #00ffcc; font-weight: 700; margin-bottom: 3px; }
+  .mission-bar-bg { background: #444; height: 6px; border-radius: 3px; width: 100%; overflow: hidden;}
+  .mission-bar-fill { background: #00ffcc; height: 100%; width: 50%; transition: width 0.3s; }
+
+  /* Right Panel (Buttons) */
+  .complex-sidebar { position: absolute; right: 10px; top: 70px; display: flex; flex-direction: column; gap: 8px; z-index: 25; }
+  .sidebar-btn { width: 45px; height: 45px; border-radius: 50%; background: #222; border: 2px solid #ff00c8; color: #fff; font-size: 1.2rem; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 10px #ff00c888; animation: pulseBtn 2s infinite; }
+  @keyframes pulseBtn { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  /* Bottom Panel (Manual Boosts) */
+  .complex-bottom-bar { 
+    position: absolute; 
+    bottom: 8px; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    display: flex; 
+    gap: 12px; 
+    z-index: 25; 
+    background: rgba(0,0,0,0.85); 
+    padding: 6px 16px; 
+    border-radius: 24px; 
+    border: 2px solid #ffcc00; 
+  }
+  .boost-btn { display: flex; flex-direction: column; align-items: center; background: none; border: none; color: white; width: 42px; cursor: pointer; }
+  .boost-icon { font-size: 1.2rem; background: #333; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; margin-bottom: 2px; transition: transform 0.1s; }
+  .boost-cost { font-size: 0.65rem; font-weight: bold; color: #ffcc00; }
+  .boost-btn:active .boost-icon { transform: scale(0.9); }
+
+  /* Popups */
+  .popup-container { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; display: flex; flex-direction: column; gap: 10px; align-items: center;}
+  .game-popup { background: linear-gradient(90deg, #ff00c8, #00d4ff); padding: 10px 20px; border-radius: 20px; color: white; font-weight: 900; font-size: 1.2rem; text-transform: uppercase; animation: popupAnim 2.5s forwards; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 2px solid #fff; }
+  @keyframes popupAnim { 0% { opacity: 0; transform: translateY(20px) scale(0.8); } 15% { opacity: 1; transform: translateY(0) scale(1.1); } 30% { transform: scale(1); } 80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }
+
+  /* Particles */
+  .particle { position: absolute; background: white; border-radius: 50%; pointer-events: none; z-index: 2; opacity: 0.6; animation: floatUp linear infinite; }
+  @keyframes floatUp { to { transform: translateY(-100vh); opacity: 0; } }
+
+  /* =========================================================
+     GAME WORLD
+     ========================================================= */
+  .game-viewport { position: absolute; top: 0; left: 0; width: 100%; height: 100%; perspective: 800px; overflow: hidden; z-index: 1; }
+  .road-container { position: absolute; width: 100%; height: 200%; bottom: -50%; left: 0; transform: rotateX(60deg) scale(2.2); transform-origin: bottom center; }
+  .road-surface { width: 300px; height: 100%; margin: 0 auto; background: #222; position: relative; border-left: 5px solid #fff; border-right: 5px solid #fff; }
+  .lane-divider { position: absolute; top: 0; bottom: 0; width: 6px; background: linear-gradient(to bottom, transparent 50%, #fff 50%); background-size: 100% 60px; }
+  .lane-divider.left { left: 33.33%; transform: translateX(-50%);}
+  .lane-divider.right { right: 33.33%; transform: translateX(50%);}
+  
+  body.playing .lane-divider { animation: scrollRoad 0.5s linear infinite; }
+  @keyframes scrollRoad { from { background-position: 0 0; } to { background-position: 0 60px; } }
+
+  /* Player Entity */
+  .player {
+    position: absolute; 
+    bottom: 125px; 
+    width: 50px; 
+    height: 80px;
+    background: linear-gradient(160deg, #007aff, #001a66);
+    border-radius: 12px; 
+    transition: left 0.15s ease-out, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: translateX(-50%); 
+    z-index: 10;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.5);
+  }
+  .player.jumping { transform: translateX(-50%) translateY(-120px) scale(1.1); box-shadow: 0 50px 30px rgba(0,0,0,0.2); }
+  .player.shielded { box-shadow: 0 0 20px 10px rgba(0, 255, 204, 0.7); border: 2px solid #00ffcc; }
+  
+  /* Items & Obstacles */
+  .obstacle { position: absolute; width: 60px; height: 60px; background: linear-gradient(135deg, #ff3b30, #660000); border-radius: 8px; transform: translateX(-50%); z-index: 4; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px solid #ff9999; }
+  .coin { position: absolute; width: 30px; height: 30px; background: radial-gradient(circle, #ffe066, #ffa500); border-radius: 50%; transform: translateX(-50%); z-index: 4; border: 2px solid #fff; box-shadow: 0 0 10px #ffa500; animation: spinItem 1s linear infinite; }
+  .powerup { position: absolute; width: 35px; height: 35px; border-radius: 8px; transform: translateX(-50%); z-index: 4; border: 2px solid #fff; animation: spinItem 1.5s linear infinite; display: flex; justify-content: center; align-items: center; font-size: 20px;}
+  
+  .pu-shield { background: #00ffcc; box-shadow: 0 0 15px #00ffcc; }
+  .pu-boost { background: #ffcc00; box-shadow: 0 0 15px #ffcc00; }
+  .pu-magnet { background: #ff00c8; box-shadow: 0 0 15px #ff00c8; }
+
+  @keyframes spinItem { 0% { transform: translateX(-50%) rotateY(0deg); } 100% { transform: translateX(-50%) rotateY(360deg); } }
+
+  /* Overlay states */
+  .overlay-msg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; display: none; justify-content: center; align-items: center; font-size: 3rem; font-weight: 900; z-index: 90; text-transform: uppercase;}
+</style>
+</head>
+<body>
+
+  <!-- Menu Screen -->
+  <section id="menu-screen" class="screen active">
+    <div class="card">
+      <h1>Endless Runner Experiment</h1>
+      <p>Enter a username to begin the session.</p>
+      <input type="text" id="username-input" placeholder="Your username" autocomplete="off" maxlength="40" />
+      <button id="start-btn">Start Game</button>
+      <p id="username-error" style="color: #d32f2f; margin-top: 0.5rem; font-size: 0.85rem; height: 1rem;"></p>
+    </div>
+  </section>
+
+  <!-- Game Screen -->
+  <section id="game-screen" class="screen">
+    <div id="ui-layer"></div>
+    <div class="popup-container" id="popup-container"></div>
+
+    <!-- Viewport -->
+    <div class="game-viewport" id="game-viewport">
+      <div class="road-container">
+        <div class="road-surface" id="road-surface">
+          <div class="lane-divider left"></div>
+          <div class="lane-divider right"></div>
+        </div>
+      </div>
+      <div class="player" id="player"></div>
+    </div>
+
+    <!-- Pause / Game Over Overlays -->
+    <div class="overlay-msg" id="pause-overlay">Paused</div>
+    <div class="overlay-msg" id="game-over-overlay" style="flex-direction: column;">
+      <div style="color:#ff3b30; font-size:4rem; margin-bottom: 10px;">GAME OVER</div>
+      <div style="font-size:1.5rem;" id="final-stats"></div>
+      <div style="font-size:1.2rem; color:#aaa; margin-top: 15px;">Saving results...</div>
+    </div>
+  </section>
+
+<script>
+/* ==========================================================================
+   GAME CONFIGURATION & EXTERNAL LINKS
+   ========================================================================== */
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzmElShQEjYlW6zC53SqCrbvzyfGUVqRc-U40jcwDUOA92RCzoH_cMDH_Iz7Vd-iu7-Yg/exec";
+const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSc2-jL51ym2ULbT3LTmIY8GJyIP6DEtHGvJ8CyG5SSPCsSsKg/viewform?usp=header";
+
+let currentUsername = "";
+let currentCondition = 'minimal';
+let domNodes = {};
+
+/* ==========================================================================
+   GAME CORE MECHANICS
+   ========================================================================== */
+const GameCore = (function () {
+  const LANES = 3;
+  const BASE_SPEED = 60;
+  
+  let state = null;
+  let hooks = { onUpdate: () => {}, onGameEnd: () => {} };
+  let animationFrameId = null;
+  let lastTime = 0;
+  let spawnTimer = 0;
+
+  function init(customHooks) {
+    hooks = Object.assign({ onUpdate: () => {}, onGameEnd: () => {} }, customHooks || {});
+    state = {
+      lane: 1,
+      isJumping: false,
+      hasShield: false,
+      boostTimer: 0,
+      magnetTimer: 0,
+      entities: [],
+      score: 0,
+      distance: 0,
+      coins: 0,
+      multiplier: 1,
+      speed: BASE_SPEED,
+      startTime: Date.now(),
+      timePlayed: 0,
+      errorCount: 0,
+      ended: false,
+      paused: false
+    };
+    return state;
+  }
+
+  function start() {
+    if (!state || state.ended) return;
+    state.paused = false;
+    lastTime = performance.now();
+    loop(performance.now());
+  }
+
+  function pause() {
+    if (!state || state.ended) return;
+    state.paused = !state.paused;
+    if (!state.paused) {
+      lastTime = performance.now();
+      loop(performance.now());
+    }
+  }
+
+  function moveLeft() { 
+    if (!state || state.paused || state.ended) return;
+    if (state.lane > 0) {
+      state.lane--; 
+    } else {
+      state.errorCount++; // Wall crash mistake
+    }
+  }
+  
+  function moveRight() { 
+    if (!state || state.paused || state.ended) return;
+    if (state.lane < LANES - 1) {
+      state.lane++; 
+    } else {
+      state.errorCount++; // Wall crash mistake
+    }
+  }
+  
+  function jump() {
+    if (!state || state.paused || state.ended || state.isJumping) return;
+    state.isJumping = true;
+    setTimeout(() => { if(state) state.isJumping = false; }, 800);
+  }
+
+  function spawnEntity() {
+    const currentSpawnRate = Math.max(400, 1500 - ((state.speed - BASE_SPEED) * 15));
+    if (spawnTimer > currentSpawnRate) {
+      spawnTimer = 0;
+      const lane = Math.floor(Math.random() * LANES);
+      const rand = Math.random();
+      let type = 'obstacle';
+      let idPrefix = 'obs_';
+      
+      if (rand > 0.85) { 
+        const pRand = Math.random();
+        if (pRand < 0.33) { type = 'shield'; idPrefix = 'pu_sh_'; }
+        else if (pRand < 0.66) { type = 'boost'; idPrefix = 'pu_bo_'; }
+        else { type = 'magnet'; idPrefix = 'pu_mg_'; }
+      } else if (rand > 0.4) {
+        type = 'coin'; idPrefix = 'coin_';
+      }
+      
+      state.entities.push({
+        id: idPrefix + Math.random().toString(36).substr(2, 6),
+        type: type,
+        lane: lane,
+        y: -10,
+        collected: false
+      });
+    }
+  }
+
+  function loop(time) {
+    if (state.ended || state.paused) return;
+    const dt = time - lastTime;
+    lastTime = time;
+
+    if (state.boostTimer > 0) {
+      state.boostTimer -= dt;
+      state.multiplier = 2;
+    } else {
+      state.multiplier = 1;
+    }
+
+    if (state.magnetTimer > 0) state.magnetTimer -= dt;
+
+    const activeSpeed = state.boostTimer > 0 ? state.speed * 1.5 : state.speed;
+    state.distance += activeSpeed * (dt / 1000) * 0.1;
+    state.score = Math.floor(state.distance) * state.multiplier;
+    state.speed += (dt / 1000) * 0.2;
+    
+    spawnTimer += dt;
+    spawnEntity();
+
+    const yDelta = activeSpeed * (dt / 1000);
+    state.entities.forEach(ent => {
+      if (ent.collected) return;
+      ent.y += yDelta;
+
+      if (state.magnetTimer > 0 && ent.type === 'coin' && ent.y > 20 && ent.y < 90) {
+        if (ent.lane < state.lane) ent.lane += 0.05;
+        if (ent.lane > state.lane) ent.lane -= 0.05;
+      }
+
+      const inLane = Math.abs(ent.lane - state.lane) < 0.4;
+      const inY = ent.y > 75 && ent.y < 92;
+
+      if (inLane && inY) {
+        if (ent.type === 'obstacle') {
+          if (!state.isJumping) {
+            if (state.hasShield) {
+              state.hasShield = false;
+              ent.collected = true;
+              state.errorCount++; // Dynamic mistake logged (Shield Break)
+              triggerEvent('shield_break');
+            } else {
+              state.errorCount++; // Final terminal crash logged
+              endGame();
+            }
+          }
+        } else {
+          ent.collected = true;
+          if (ent.type === 'coin') {
+            state.coins++;
+          } else if (ent.type === 'shield') {
+            state.hasShield = true;
+            triggerEvent('shield_equip');
+          } else if (ent.type === 'boost') {
+            state.boostTimer = 5000;
+            triggerEvent('boost_equip');
+          } else if (ent.type === 'magnet') {
+            state.magnetTimer = 8000;
+            triggerEvent('magnet_equip');
+          }
+        }
+      }
+    });
+
+    state.entities = state.entities.filter(ent => ent.y < 120 && !ent.collected);
+
+    hooks.onUpdate(state);
+    animationFrameId = requestAnimationFrame(loop);
+  }
+
+  function endGame() {
+    state.ended = true;
+    state.timePlayed = Math.round((Date.now() - state.startTime) / 100) / 10;
+    hooks.onUpdate(state);
+    hooks.onGameEnd(state);
+  }
+
+  function manualTrigger(type) {
+    if(!state || state.ended || state.paused) return false;
+    if(type === 'shield' && state.coins >= 50 && !state.hasShield) { state.coins-=50; state.hasShield=true; return true; }
+    if(type === 'boost' && state.coins >= 50) { state.coins-=50; state.boostTimer = 5000; return true; }
+    if(type === 'magnet' && state.coins >= 50) { state.coins-=50; state.magnetTimer = 8000; return true; }
+    return false;
+  }
+
+  return { init, start, pause, moveLeft, moveRight, jump, manualTrigger, getState: () => state };
+})();
+
+/* ==========================================================================
+   APP & UI CONTEXT INJECTION
+   ========================================================================== */
+async function assignUIType(username) {
+  try {
+    const res = await fetch(WEBAPP_URL, { method: "GET" });
+    if (!res.ok) throw new Error(`Assignment request failed: ${res.status}`);
+    const data = await res.json();
+    if (data.uiType === "minimal" || data.uiType === "complex") {
+      return data.uiType;
+    }
+    throw new Error(`Unexpected assignment response`);
+  } catch (err) {
+    console.error("assignUIType fallback to automated 50/50 distribution:", err);
+    return Math.random() < 0.5 ? "minimal" : "complex";
+  }
+}
+
+function initApp() {
+  const startBtn = document.getElementById('start-btn');
+  const input = document.getElementById('username-input');
+  const errorEl = document.getElementById('username-error');
+
+  async function handleStart() {
+    const username = input.value.trim();
+    if (!username) {
+      errorEl.textContent = "Please enter a username.";
+      return;
+    }
+    errorEl.textContent = "";
+    startBtn.disabled = true;
+    startBtn.innerText = "Loading Config...";
+
+    currentUsername = username;
+    currentCondition = await assignUIType(username);
+
+    document.getElementById('menu-screen').classList.remove('active');
+    document.getElementById('game-screen').classList.add('active');
+    document.body.className = `ui-${currentCondition} playing`;
+    setupUI();
+    startGame();
+  }
+
+  startBtn.addEventListener('click', handleStart);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleStart();
+  });
+}
+
+function setupUI() {
+  const uiLayer = document.getElementById('ui-layer');
+  if (currentCondition === 'minimal') {
+    uiLayer.innerHTML = `
+      <div class="hud-minimal">
+        <span>Score: <span id="ui-score">0</span></span>
+        <button class="minimal-pause-btn" id="btn-pause">||</button>
+        <span>🪙 <span id="ui-coins">0</span></span>
+      </div>
+    `;
+  } else {
+    uiLayer.innerHTML = `
+      <div class="top-bar-complex">
+        <div class="complex-profile">
+          <div class="profile-icon"></div>
+          <div>
+            <div style="font-size: 0.7rem; color: #aaa;">LVL <span id="ui-level">12</span></div>
+            <div style="font-weight: 800; font-size: 1.1rem;">${currentUsername}</div>
+          </div>
+        </div>
+        <div class="complex-stats">
+          <div class="badge">Score <span id="ui-score" style="color:#00ffcc">0</span></div>
+          <div class="badge">x<span id="ui-mult">1</span></div>
+          <div class="badge gold">🪙 <span id="ui-coins">0</span></div>
+          <div class="badge" id="ui-shield-status">🛡️ OFF</div>
+        </div>
+      </div>
+      
+      <div class="complex-missions">
+        <div class="mission-title">DAILY MISSIONS</div>
+        <div class="mission-item">
+          <div>Run 1000m</div>
+          <div class="mission-bar-bg"><div class="mission-bar-fill" id="ui-miss1"></div></div>
+        </div>
+        <div class="mission-item">
+          <div>Collect 500 Coins</div>
+          <div class="mission-bar-bg"><div class="mission-bar-fill" id="ui-miss2"></div></div>
+        </div>
+      </div>
+
+      <div class="complex-sidebar">
+        <button class="sidebar-btn" style="border-color:#ffcc00">🛒</button>
+        <button class="sidebar-btn" style="border-color:#00ffcc">🎒</button>
+        <button class="sidebar-btn" style="border-color:#ff00c8">🏆</button>
+        <button class="sidebar-btn" style="border-color:#aaa" id="btn-pause">⚙️</button>
+      </div>
+
+      <div class="complex-bottom-bar">
+        <button class="boost-btn" onclick="GameCore.manualTrigger('boost')">
+          <div class="boost-icon">⚡</div>
+          <div class="boost-cost">50 🪙</div>
+        </button>
+        <button class="boost-btn" onclick="GameCore.manualTrigger('shield')">
+          <div class="boost-icon">🛡️</div>
+          <div class="boost-cost">50 🪙</div>
+        </button>
+        <button class="boost-btn" onclick="GameCore.manualTrigger('magnet')">
+          <div class="boost-icon">🧲</div>
+          <div class="boost-cost">50 🪙</div>
+        </button>
+      </div>
+    `;
+
+    setInterval(() => {
+      if(GameCore.getState() && !GameCore.getState().paused && !GameCore.getState().ended) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + 'vw';
+        p.style.bottom = '-10px';
+        p.style.width = p.style.height = (Math.random() * 5 + 2) + 'px';
+        p.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        document.getElementById('game-screen').appendChild(p);
+        setTimeout(() => p.remove(), 5000);
+      }
+    }, 300);
+
+    setInterval(() => {
+      if(GameCore.getState() && !GameCore.getState().paused && !GameCore.getState().ended) {
+        const msgs = ['Achievement Unlocked!', 'Combo +3', 'Bonus Ready!', 'Daily Reward!', 'Special Offer!'];
+        showPopup(msgs[Math.floor(Math.random() * msgs.length)]);
+      }
+    }, 6000);
+  }
+
+  document.getElementById('btn-pause').addEventListener('click', () => {
+    GameCore.pause();
+    document.getElementById('pause-overlay').style.display = GameCore.getState().paused ? 'flex' : 'none';
+    if(GameCore.getState().paused) document.body.classList.remove('playing');
+    else document.body.classList.add('playing');
+  });
+}
+
+function showPopup(text) {
+  if (currentCondition === 'minimal') return;
+  const container = document.getElementById('popup-container');
+  const div = document.createElement('div');
+  div.className = 'game-popup';
+  div.innerText = text;
+  container.appendChild(div);
+  setTimeout(() => div.remove(), 2500);
+}
+
+function triggerEvent(type) {
+  if (currentCondition === 'complex') {
+    if(type === 'shield_equip') showPopup('Shield Activated!');
+    if(type === 'boost_equip') showPopup('Speed x2!');
+    if(type === 'magnet_equip') showPopup('Magnet On!');
+    if(type === 'shield_break') showPopup('Shield Broken!');
+  }
+}
+
+function render(state) {
+  document.getElementById('ui-score').innerText = state.score;
+  document.getElementById('ui-coins').innerText = state.coins;
+  
+  if (currentCondition === 'complex') {
+    document.getElementById('ui-mult').innerText = state.multiplier;
+    const sBadge = document.getElementById('ui-shield-status');
+    sBadge.innerText = state.hasShield ? '🛡️ ON' : '🛡️ OFF';
+    sBadge.style.color = state.hasShield ? '#00ffcc' : '#fff';
+    sBadge.style.borderColor = state.hasShield ? '#00ffcc' : '#555';
+    
+    document.getElementById('ui-miss1').style.width = Math.min(100, (state.distance / 1000) * 100) + '%';
+    document.getElementById('ui-miss2').style.width = Math.min(100, (state.coins / 500) * 100) + '%';
+    document.getElementById('ui-level').innerText = 12 + Math.floor(state.distance / 500);
+  }
+
+  const playerEl = document.getElementById('player');
+  const lanePct = [16.66, 50, 83.33];
+  playerEl.style.left = `calc(50% - 150px + ${lanePct[state.lane] * 3}px)`;
+  
+  if (state.isJumping) playerEl.classList.add('jumping'); else playerEl.classList.remove('jumping');
+  if (state.hasShield) playerEl.classList.add('shielded'); else playerEl.classList.remove('shielded');
+
+  const viewport = document.getElementById('game-viewport');
+  const currentIds = new Set(state.entities.map(e => e.id));
+
+  for (const id in domNodes) {
+    if (!currentIds.has(id)) {
+      domNodes[id].remove();
+      delete domNodes[id];
+    }
+  }
+
+  state.entities.forEach(ent => {
+    if (!domNodes[ent.id]) {
+      const el = document.createElement('div');
+      if (ent.type === 'obstacle') el.className = 'obstacle';
+      else if (ent.type === 'coin') el.className = 'coin';
+      else el.className = `powerup pu-${ent.type}`;
+      
+      if(ent.type === 'shield') el.innerText = '🛡️';
+      if(ent.type === 'boost') el.innerText = '⚡';
+      if(ent.type === 'magnet') el.innerText = '🧲';
+
+      viewport.appendChild(el);
+      domNodes[ent.id] = el;
+    }
+    const el = domNodes[ent.id];
+    el.style.left = `calc(50% - 150px + ${lanePct[Math.round(ent.lane)] * 3}px)`;
+    el.style.top = ent.y + '%';
+  });
+}
+
+function handleGameOver(state) {
+  document.body.classList.remove('playing');
+  document.getElementById('game-over-overlay').style.display = 'flex';
+  document.getElementById('final-stats').innerHTML = `
+    Score: <span style="color:#00ffcc">${state.score}</span><br>
+    Coins: <span style="color:#ffcc00">${state.coins}</span><br>
+    Errors Logged: <span style="color:#ff3b30">${state.errorCount}</span>
+  `;
+
+  // Payload structure built defensively using multi-key redundancy mapping
+  const payload = {
+    playerID: currentUsername,
+    score: state.score,
+    timePlayed: state.timePlayed,
+    uiType: currentCondition,
+    errorCount: state.errorCount, // Default parameter tracking key
+    errors: state.errorCount,     // Redundant mapping fallback key 1
+    error: state.errorCount       // Redundant mapping fallback key 2
+  };
+
+  fetch(WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  })
+  .catch((err) => console.error("Data tracking endpoint mapping mismatch:", err))
+  .finally(() => {
+    window.location.href = FORM_URL;
+  });
+}
+
+/* --- Input Handling --- */
+function setupInput() {
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowLeft' || e.key === 'a') GameCore.moveLeft();
+    if(e.key === 'ArrowRight' || e.key === 'd') GameCore.moveRight();
+    if(e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') GameCore.jump();
+  });
+
+  let touchStartX, touchStartY;
+  window.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, {passive: true});
+
+  window.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 30) GameCore.moveRight();
+      else if (dx < -30) GameCore.moveLeft();
+    } else {
+      if (dy < -30) GameCore.jump();
+    }
+  }, {passive: true});
+}
+
+function startGame() {
+  domNodes = {};
+  document.querySelectorAll('.obstacle, .coin, .powerup').forEach(e => e.remove());
+  setupInput();
+  
+  GameCore.init({
+    onUpdate: render,
+    onGameEnd: handleGameOver
+  });
+  GameCore.start();
+}
+
+window.onload = initApp;
+</script>
+</body>
+</html>
